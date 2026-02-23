@@ -34,26 +34,38 @@ def vizAttns(attns, tokens=None):
     nLayers, nHeads, nToksQ, nToksK = attns.shape
     
     fig, axes = plt.subplots(nLayers, nHeads, figsize=(nHeads * 2, nLayers * 2), squeeze=False)
+
+    think_start_idx = None
+    think_end_idx = None
     
-    # Global color scale
-    vmax = attns.max().item()
-    vmin = attns.min().item()
-    
+    # Try to find the bounds of the <think> blocks if tokens are provided
+    if tokens is not None:
+        tokens_list = tokens[0].tolist() # Assuming batch 1
+        
+        # GLM-4 uses these specific token IDs for the thinking boundaries
+        if 154841 in tokens_list:
+            think_start_idx = tokens_list.index(154841)
+        if 154842 in tokens_list:
+            think_end_idx = tokens_list.index(154842)
+            
     for l in range(nLayers):
         for h in range(nHeads):
             ax = axes[l, h]
-            im = ax.imshow(attns[l, h].detach().cpu().numpy(), vmin=vmin, vmax=vmax, cmap='viridis')
+            im = ax.imshow(attns[l, h].detach().cpu().numpy(), cmap='viridis')
+            
+            # Draw the lines if we found the indices
+            if think_start_idx is not None:
+                ax.axvline(x=think_start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
+                ax.axhline(y=think_start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
+            if think_end_idx is not None:
+                ax.axvline(x=think_end_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
+                ax.axhline(y=think_end_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
             ax.set_xticks([])
             ax.set_yticks([])
             if l == 0:
                 ax.set_title(f"H{h}", fontsize=8)
             if h == 0:
                 ax.set_ylabel(f"L{l}", fontsize=8, rotation=0, labelpad=10)
-    
-    # Add a global colorbar
-    fig.subplots_adjust(right=0.9)
-    cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
-    fig.colorbar(im, cax=cbar_ax)
     
     plt.suptitle("Attention Maps (Layers x Heads)", fontsize=16)
     plt.savefig("attention_maps.png", bbox_inches='tight')
@@ -113,38 +125,15 @@ Now I need to get the weather for Beijing.</think>""" + "I have thought of and p
 
 model_inputs = tokenizer.apply_chat_template(messages, tools=tools, clear_thinking=False, add_generation_prompt=True, tokenize=True, return_tensors="pt", return_dict=True)
 
-print("\n--- DEBUG INFO ---")
-print(f"Type of model_inputs: {type(model_inputs)}")
-if isinstance(model_inputs, dict):
-    print(f"Keys in model_inputs: {model_inputs.keys()}")
-    for k, v in model_inputs.items():
-        print(f"Type of model_inputs['{k}']: {type(v)}")
-        if hasattr(v, 'shape'):
-            print(f"Shape of model_inputs['{k}']: {v.shape}")
-elif hasattr(model_inputs, 'data'):
-     # In case it's a BatchEncoding or similar
-     print(f"Keys in model_inputs.data: {model_inputs.data.keys()}")
-     for k, v in model_inputs.data.items():
-        print(f"Type of model_inputs.data['{k}']: {type(v)}")
-        if hasattr(v, 'shape'):
-            print(f"Shape of model_inputs.data['{k}']: {v.shape}")
-
-# Some chat templates return a dict with 'input_ids', some return a tensor directly
+# Some chat templates return a dict with 'input_ids', some return a BatchEncoding
 if isinstance(model_inputs, dict) or hasattr(model_inputs, 'data'):
     tokens = model_inputs["input_ids"]
 else:
     tokens = model_inputs
 
-print(f"Type of tokens extracted: {type(tokens)}")
-if hasattr(tokens, 'shape'):
-    print(f"Shape of extracted tokens: {tokens.shape}")
-print("------------------\n")
-
 # Ensure tokens is a 2D tensor (batch_size, seq_len)
 if hasattr(tokens, 'dim') and tokens.dim() == 1:
     tokens = tokens.unsqueeze(0)
-elif not hasattr(tokens, 'dim'):
-    print("WARNING: 'tokens' does not have a 'dim' attribute. It might not be a tensor.")
 
 
 
