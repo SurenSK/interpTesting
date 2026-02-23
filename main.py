@@ -113,15 +113,39 @@ Now I need to get the weather for Beijing.</think>""" + "I have thought of and p
 
 model_inputs = tokenizer.apply_chat_template(messages, tools=tools, clear_thinking=False, add_generation_prompt=True, tokenize=True, return_tensors="pt", return_dict=True)
 
-# Some chat templates return a dict with 'input_ids', some return a tensor directly
+print("\n--- DEBUG INFO ---")
+print(f"Type of model_inputs: {type(model_inputs)}")
 if isinstance(model_inputs, dict):
+    print(f"Keys in model_inputs: {model_inputs.keys()}")
+    for k, v in model_inputs.items():
+        print(f"Type of model_inputs['{k}']: {type(v)}")
+        if hasattr(v, 'shape'):
+            print(f"Shape of model_inputs['{k}']: {v.shape}")
+elif hasattr(model_inputs, 'data'):
+     # In case it's a BatchEncoding or similar
+     print(f"Keys in model_inputs.data: {model_inputs.data.keys()}")
+     for k, v in model_inputs.data.items():
+        print(f"Type of model_inputs.data['{k}']: {type(v)}")
+        if hasattr(v, 'shape'):
+            print(f"Shape of model_inputs.data['{k}']: {v.shape}")
+
+# Some chat templates return a dict with 'input_ids', some return a tensor directly
+if isinstance(model_inputs, dict) or hasattr(model_inputs, 'data'):
     tokens = model_inputs["input_ids"]
 else:
     tokens = model_inputs
 
+print(f"Type of tokens extracted: {type(tokens)}")
+if hasattr(tokens, 'shape'):
+    print(f"Shape of extracted tokens: {tokens.shape}")
+print("------------------\n")
+
 # Ensure tokens is a 2D tensor (batch_size, seq_len)
-if tokens.dim() == 1:
+if hasattr(tokens, 'dim') and tokens.dim() == 1:
     tokens = tokens.unsqueeze(0)
+elif not hasattr(tokens, 'dim'):
+    print("WARNING: 'tokens' does not have a 'dim' attribute. It might not be a tensor.")
+
 
 
 attns = getAttns(model, tokens)
