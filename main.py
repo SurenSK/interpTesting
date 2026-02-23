@@ -1,5 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
+import numpy as np
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 model_id = "zai-org/GLM-4.7-Flash"
@@ -38,7 +40,6 @@ def vizAttns(attns, tokens=None):
     think_start_indices = []
     think_end_indices = []
     
-    # Try to find the bounds of the <think> blocks if tokens are provided
     if tokens is not None:
         tokens_list = tokens[0].tolist() # Assuming batch 1
         
@@ -49,9 +50,10 @@ def vizAttns(attns, tokens=None):
     for l in range(nLayers):
         for h in range(nHeads):
             ax = axes[l, h]
-            im = ax.imshow(attns[l, h].detach().cpu().numpy(), cmap='viridis')
+            attn_np = attns[l, h].detach().cpu().numpy()
+            attn_np = np.clip(attn_np, 1e-4, None)
+            im = ax.imshow(attn_np, cmap='viridis', norm=LogNorm())
             
-            # Draw the lines if we found the indices
             for start_idx in think_start_indices:
                 ax.axvline(x=start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
                 ax.axhline(y=start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
@@ -136,4 +138,6 @@ if hasattr(tokens, 'dim') and tokens.dim() == 1:
 
 
 attns = getAttns(model, tokens)
+torch.save(attns, "attns.pt")
+print("Saved attns.pt")
 vizAttns(attns, tokens=tokens)
