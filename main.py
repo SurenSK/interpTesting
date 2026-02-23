@@ -35,18 +35,16 @@ def vizAttns(attns, tokens=None):
     
     fig, axes = plt.subplots(nLayers, nHeads, figsize=(nHeads * 2, nLayers * 2), squeeze=False)
 
-    think_start_idx = None
-    think_end_idx = None
+    think_start_indices = []
+    think_end_indices = []
     
     # Try to find the bounds of the <think> blocks if tokens are provided
     if tokens is not None:
         tokens_list = tokens[0].tolist() # Assuming batch 1
         
         # GLM-4 uses these specific token IDs for the thinking boundaries
-        if 154841 in tokens_list:
-            think_start_idx = tokens_list.index(154841)
-        if 154842 in tokens_list:
-            think_end_idx = tokens_list.index(154842)
+        think_start_indices = [i for i, x in enumerate(tokens_list) if x == 154841]
+        think_end_indices = [i for i, x in enumerate(tokens_list) if x == 154842]
             
     for l in range(nLayers):
         for h in range(nHeads):
@@ -54,12 +52,12 @@ def vizAttns(attns, tokens=None):
             im = ax.imshow(attns[l, h].detach().cpu().numpy(), cmap='viridis')
             
             # Draw the lines if we found the indices
-            if think_start_idx is not None:
-                ax.axvline(x=think_start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
-                ax.axhline(y=think_start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
-            if think_end_idx is not None:
-                ax.axvline(x=think_end_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
-                ax.axhline(y=think_end_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
+            for start_idx in think_start_indices:
+                ax.axvline(x=start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
+                ax.axhline(y=start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
+            for end_idx in think_end_indices:
+                ax.axvline(x=end_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
+                ax.axhline(y=end_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
             ax.set_xticks([])
             ax.set_yticks([])
             if l == 0:
@@ -138,4 +136,4 @@ if hasattr(tokens, 'dim') and tokens.dim() == 1:
 
 
 attns = getAttns(model, tokens)
-vizAttns(attns)
+vizAttns(attns, tokens=tokens)
