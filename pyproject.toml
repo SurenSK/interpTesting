@@ -1,0 +1,13 @@
+[project]
+name = "interptesting"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "torch>=2.10.0",
+    "transformers>=5.2.0",
+    "matplotlib>=3.8.0",
+    "bitsandbytes>=0.49.2",
+    "accelerate>=1.12.0",
+]
