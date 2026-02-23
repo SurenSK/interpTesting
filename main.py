@@ -35,7 +35,27 @@ def vizAttns(attns, tokens=None):
     attns = attns[:, 0, :, :, :].to(torch.float32)
     nLayers, nHeads, nToksQ, nToksK = attns.shape
     
-    fig, axes = plt.subplots(nLayers, nHeads, figsize=(nHeads * 2, nLayers * 2), squeeze=False)
+    dpi = 100
+    ax_size = nToksQ / dpi
+    
+    margin_left = 0.8
+    margin_right = 0.2
+    margin_top = 0.7
+    margin_bottom = 0.2
+    spacing = 0.1
+    
+    fig_width = margin_left + margin_right + nHeads * ax_size + (nHeads - 1) * spacing
+    fig_height = margin_bottom + margin_top + nLayers * ax_size + (nLayers - 1) * spacing
+    
+    fig, axes = plt.subplots(nLayers, nHeads, figsize=(fig_width, fig_height), dpi=dpi, squeeze=False)
+    fig.subplots_adjust(
+        left=margin_left / fig_width,
+        right=1.0 - margin_right / fig_width,
+        bottom=margin_bottom / fig_height,
+        top=1.0 - margin_top / fig_height,
+        wspace=spacing / ax_size if ax_size > 0 else 0,
+        hspace=spacing / ax_size if ax_size > 0 else 0
+    )
 
     think_start_indices = []
     think_end_indices = []
@@ -52,7 +72,7 @@ def vizAttns(attns, tokens=None):
             ax = axes[l, h]
             attn_np = attns[l, h].detach().cpu().numpy()
             attn_np = np.clip(attn_np, 1e-4, None)
-            im = ax.imshow(attn_np, cmap='viridis', norm=LogNorm())
+            im = ax.imshow(attn_np, cmap='viridis', norm=LogNorm(), interpolation='nearest')
             
             for start_idx in think_start_indices:
                 ax.axvline(x=start_idx, color='red', linestyle='--', linewidth=0.5, alpha=0.7)
@@ -68,7 +88,7 @@ def vizAttns(attns, tokens=None):
                 ax.set_ylabel(f"L{l}", fontsize=8, rotation=0, labelpad=10)
     
     plt.suptitle("Attention Maps (Layers x Heads)", fontsize=16)
-    plt.savefig("attention_maps.png", bbox_inches='tight')
+    plt.savefig("attention_maps.png", dpi=dpi)
     print("Saved attention_maps.png")
     plt.close()
 
