@@ -17,6 +17,7 @@ model = AutoModelForCausalLM.from_pretrained(
     output_attentions=True,
     attn_implementation="eager",
     trust_remote_code=True,
+    
     device_map="auto"
 )
 
@@ -110,8 +111,18 @@ Now I need to get the weather for Beijing.</think>""" + "I have thought of and p
     }
 ]
 
-model_inputs = tokenizer.apply_chat_template(messages, tools=tools, clear_thinking=False, add_generation_prompt=True, tokenize=True)
-tokens = torch.tensor([model_inputs])
+model_inputs = tokenizer.apply_chat_template(messages, tools=tools, clear_thinking=False, add_generation_prompt=True, tokenize=True, return_tensors="pt", return_dict=True)
+
+# Some chat templates return a dict with 'input_ids', some return a tensor directly
+if isinstance(model_inputs, dict):
+    tokens = model_inputs["input_ids"]
+else:
+    tokens = model_inputs
+
+# Ensure tokens is a 2D tensor (batch_size, seq_len)
+if tokens.dim() == 1:
+    tokens = tokens.unsqueeze(0)
+
 
 attns = getAttns(model, tokens)
 vizAttns(attns)
